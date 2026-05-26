@@ -27,6 +27,13 @@ interface RbSet {
   num_parts: number;
 }
 
+export type RebrickableSetListItem = {
+  set_num: string;
+  name: string;
+  year: number;
+  num_parts: number;
+};
+
 interface RbInventoryPart {
   part: {
     part_num: string;
@@ -174,4 +181,25 @@ export async function searchSets(
     apiKey,
   );
   return data.results;
+}
+
+export async function getSetsThatContainPart(
+  partNum: string,
+  apiKey: string,
+  limit = 25,
+): Promise<RebrickableSetListItem[]> {
+  const results: RebrickableSetListItem[] = [];
+  let url: string | null = `${BASE}/lego/parts/${encodeURIComponent(partNum)}/sets/?page_size=1000`;
+
+  while (url) {
+    const res: PagedResponse<RebrickableSetListItem> =
+      await fetchJson<PagedResponse<RebrickableSetListItem>>(url, apiKey);
+    results.push(...res.results);
+    url = res.next;
+    if (results.length >= limit) break;
+  }
+
+  return results
+    .slice(0, limit)
+    .sort((a, b) => (a.num_parts ?? 0) - (b.num_parts ?? 0));
 }

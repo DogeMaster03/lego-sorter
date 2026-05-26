@@ -6,6 +6,7 @@ interface Props {
   onOpenSets: () => void;
   onOpenProgress: () => void;
   onImport: () => void;
+  onOpenCameraSearch: () => void;
 }
 
 export function SessionBar({
@@ -13,6 +14,7 @@ export function SessionBar({
   onOpenSets,
   onOpenProgress,
   onImport,
+  onOpenCameraSearch,
 }: Props) {
   const session = useSessionStore((s) => s.session);
   const setSessionName = useSessionStore((s) => s.setSessionName);
@@ -31,6 +33,13 @@ export function SessionBar({
         {session.sets.length} set{session.sets.length !== 1 ? "s" : ""}
       </span>
       <div className="ml-auto flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onOpenCameraSearch}
+          className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-100"
+        >
+          Camera
+        </button>
         <button
           type="button"
           onClick={onOpenSets}

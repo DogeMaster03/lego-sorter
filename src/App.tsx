@@ -6,6 +6,7 @@ import { LogForm } from "./components/LogForm";
 import { SetManager } from "./components/SetManager";
 import { SetProgress } from "./components/SetProgress";
 import { SettingsModal } from "./components/SettingsModal";
+import { BrickognizeSearch } from "./components/BrickognizeSearch";
 import { loadApiKey, parseImportedSession } from "./lib/persist";
 import { useSessionStore } from "./store/sessionStore";
 
@@ -13,6 +14,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(!loadApiKey());
   const [setsOpen, setSetsOpen] = useState(false);
   const [progressOpen, setProgressOpen] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const importSession = useSessionStore((s) => s.importSession);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -39,6 +41,7 @@ export default function App() {
         onOpenSets={() => setSetsOpen(true)}
         onOpenProgress={() => setProgressOpen(true)}
         onImport={() => fileRef.current?.click()}
+        onOpenCameraSearch={() => setCameraOpen(true)}
       />
 
       <input
@@ -72,6 +75,7 @@ export default function App() {
       />
       <SetManager open={setsOpen} onClose={() => setSetsOpen(false)} />
       <SetProgress open={progressOpen} onClose={() => setProgressOpen(false)} />
+      <BrickognizeSearch open={cameraOpen} onClose={() => setCameraOpen(false)} />
     </div>
   );
 }

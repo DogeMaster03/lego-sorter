@@ -1,10 +1,5 @@
-import electron from "electron";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const { app, BrowserWindow, ipcMain } = electron;
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const { app, BrowserWindow, ipcMain } = require("electron");
+const path = require("node:path");
 
 const DEV_SERVER_URL =
   process.env.VITE_DEV_SERVER_URL ?? "http://localhost:5173";
@@ -21,7 +16,9 @@ async function brickognizePredictParts(imageBytes) {
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Brickognize error ${res.status}: ${text || res.statusText}`);
+    throw new Error(
+      `Brickognize error ${res.status}: ${text || res.statusText}`,
+    );
   }
   return res.json();
 }
@@ -34,7 +31,7 @@ function createWindow() {
     minHeight: 600,
     title: "Lego Sorter",
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs"),
+      preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -67,3 +64,4 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
+
