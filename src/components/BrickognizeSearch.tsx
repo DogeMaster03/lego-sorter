@@ -10,6 +10,7 @@ type BrickognizeItem = {
   category?: string | null;
   type: "part" | "set" | "fig" | "sticker";
   score: number;
+  external_sites?: { name: string; url: string }[];
 };
 
 type BrickognizeResponse = {
@@ -61,6 +62,9 @@ export function BrickognizeSearch({ open, onClose }: Props) {
   >([]);
   const [setsError, setSetsError] = useState<string>("");
   const [setsBusy, setSetsBusy] = useState(false);
+  const [resolvedPartNum, setResolvedPartNum] = useState<string | null>(null);
+  const [usedBaseMold, setUsedBaseMold] = useState(false);
+  const [manualSetNum, setManualSetNum] = useState("");
 
   const loadedPartNums = useMemo(() => {
     const set = new Set<string>();
@@ -77,6 +81,8 @@ export function BrickognizeSearch({ open, onClose }: Props) {
     setActivePart(null);
     setCandidateSets([]);
     setSetsError("");
+    setResolvedPartNum(null);
+    setUsedBaseMold(false);
 
     (async () => {
       try {
@@ -124,6 +130,8 @@ export function BrickognizeSearch({ open, onClose }: Props) {
       setActivePart(null);
       setCandidateSets([]);
       setSetsError("");
+      setResolvedPartNum(null);
+      setUsedBaseMold(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Brickognize request failed");
     } finally {
@@ -138,6 +146,8 @@ export function BrickognizeSearch({ open, onClose }: Props) {
 
   async function handleFindSets(item: BrickognizeItem) {
     setSetsError("");
+    setResolvedPartNum(null);
+    setUsedBaseMold(false);
     setSetsBusy(true);
     setActivePart(item);
     setCandidateSets([]);
@@ -146,7 +156,15 @@ export function BrickognizeSearch({ open, onClose }: Props) {
       if (!apiKey) {
         throw new Error("Add your Rebrickable API key in Settings first.");
       }
-      const sets = await getSetsThatContainPart(item.id, apiKey, 25);
+      const rebrickableUrls =
+        item.external_sites
+          ?.filter((s) => /rebrickable/i.test(s.name) || /rebrickable\.com/i.test(s.url))
+          .map((s) => s.url) ?? [];
+
+      const { sets, resolvedPartNum: resolved, usedBaseMoldFallback } =
+        await getSetsThatContainPart(item.id, apiKey, 25, rebrickableUrls);
+      setResolvedPartNum(resolved);
+      setUsedBaseMold(usedBaseMoldFallback);
       setCandidateSets(
         sets.map((s) => ({
           setNum: s.set_num,
@@ -155,9 +173,6 @@ export function BrickognizeSearch({ open, onClose }: Props) {
           numParts: s.num_parts,
         })),
       );
-      if (sets.length === 0) {
-        setSetsError("No sets found for this part.");
-      }
     } catch (e) {
       setSetsError(e instanceof Error ? e.message : "Failed to fetch sets");
     } finally {
@@ -176,7 +191,15 @@ export function BrickognizeSearch({ open, onClose }: Props) {
       const loaded = await loadSet(setNum, apiKey);
       addSet(loaded);
       if (activePart) {
-        selectPart(activePart.id);
+        const master = useSessionStore.getState().masterList;
+        const id = activePart.id;
+        const resolved = resolvedPartNum ?? id;
+        const pick = master.some((p) => p.partNum === id)
+          ? id
+          : master.some((p) => p.partNum === resolved)
+            ? resolved
+            : id;
+        selectPart(pick);
       }
     } catch (e) {
       setSetsError(e instanceof Error ? e.message : "Failed to load set");
@@ -306,9 +329,62 @@ export function BrickognizeSearch({ open, onClose }: Props) {
                   <span className="font-mono">{activePart.id}</span>
                 </div>
                 <div className="text-xs text-gray-600">{activePart.name}</div>
+                {usedBaseMold && (
+                  <div className="mt-1 text-xs text-amber-800">
+                    Showing sets with the base mold{" "}
+                    <span className="font-mono">{resolvedPartNum}</span>, not
+                    this exact print. The piece shape matches, but color/print
+                    may differ.
+                  </div>
+                )}
+                {resolvedPartNum &&
+                  resolvedPartNum !== activePart.id &&
+                  !usedBaseMold && (
+                    <div className="mt-1 text-xs text-gray-500">
+                      Rebrickable lookup used part id:{" "}
+                      <span className="font-mono">{resolvedPartNum}</span>
+                    </div>
+                  )}
+                {candidateSets.length > 0 && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Verified against set inventories (bundles excluded).
+                  </p>
+                )}
 
                 {setsError && (
-                  <p className="mt-2 text-sm text-red-600">{setsError}</p>
+                  <div className="mt-2 space-y-2">
+                    <p className="text-sm text-red-600">{setsError}</p>
+                    <p className="text-xs text-gray-600">
+                      If you know which set this part belongs to, add it by number:
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={manualSetNum}
+                        onChange={(e) => setManualSetNum(e.target.value)}
+                        placeholder="e.g. 6030-1"
+                        className="flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => manualSetNum.trim() && handleAddSet(manualSetNum.trim())}
+                        disabled={!manualSetNum.trim() || isLoadingSet}
+                        className="rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                      >
+                        Add
+                      </button>
+                    </div>
+                    {activePart && (
+                      <a
+                        href={`https://rebrickable.com/parts/${encodeURIComponent(activePart.id)}/`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-blue-600 underline"
+                      >
+                        View part on Rebrickable
+                      </a>
+                    )}
+                  </div>
                 )}
 
                 {candidateSets.length > 0 ? (

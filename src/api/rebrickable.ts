@@ -53,8 +53,7 @@ function authHeaders(apiKey: string): HeadersInit {
 }
 
 async function fetchJson<T>(url: string, apiKey: string): Promise<T> {
-  await throttle();
-  const res = await fetch(url, { headers: authHeaders(apiKey) });
+  const res = await fetchRaw(url, apiKey);
   if (res.status === 401) throw new Error("Invalid API key");
   if (res.status === 404) throw new Error("Not found");
   if (res.status === 429) {
@@ -65,8 +64,16 @@ async function fetchJson<T>(url: string, apiKey: string): Promise<T> {
         : "Rate limited — wait a moment and try again";
     throw new Error(detail);
   }
-  if (!res.ok) throw new Error(`API error ${res.status}`);
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`API error ${res.status}${text ? `: ${text}` : ""}`);
+  }
   return res.json() as Promise<T>;
+}
+
+async function fetchRaw(url: string, apiKey: string): Promise<Response> {
+  await throttle();
+  return fetch(url, { headers: authHeaders(apiKey) });
 }
 
 export async function testApiKey(apiKey: string): Promise<boolean> {
@@ -183,23 +190,323 @@ export async function searchSets(
   return data.results;
 }
 
-export async function getSetsThatContainPart(
+interface RbPartSummary {
+  part_num: string;
+  name: string;
+  print_of?: string | null;
+  num_sets?: number;
+}
+
+interface RbPartColorRow {
+  color_id?: number;
+  num_sets: number;
+  color?: { id: number };
+}
+
+function partColorId(row: RbPartColorRow): number | null {
+  if (row.color_id != null) return row.color_id;
+  if (row.color?.id != null) return row.color.id;
+  return null;
+}
+
+/** Extract Rebrickable part id from a brickognize/rebrickable URL if present. */
+export function partNumFromRebrickableUrl(url: string): string | null {
+  const match = url.match(/rebrickable\.com\/parts\/([^/?#]+)/i);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function basePartNum(partNum: string): string {
+  return partNum.replace(/(?:pb|pr|pat|p\d+b)\d+$/i, "");
+}
+
+/** Build candidate Rebrickable part numbers for a Brickognize id. */
+function candidatePartNums(
+  brickognizeId: string,
+  rebrickableUrls: string[] = [],
+): string[] {
+  const candidates: string[] = [];
+  const add = (id: string) => {
+    const t = id.trim();
+    if (t && !candidates.includes(t)) candidates.push(t);
+  };
+
+  add(brickognizeId);
+  for (const url of rebrickableUrls) {
+    const fromUrl = partNumFromRebrickableUrl(url);
+    if (fromUrl) add(fromUrl);
+  }
+
+  const base = basePartNum(brickognizeId);
+  if (base !== brickognizeId) add(base);
+
+  return candidates;
+}
+
+/** Exact print ids first; base mold fallback last. */
+function orderedPartCandidates(candidates: string[], originalId: string): string[] {
+  const base = basePartNum(originalId);
+  const exact = candidates.filter((c) => c !== base);
+  const fallback = candidates.filter((c) => c === base);
+  return [...exact, ...fallback];
+}
+
+function isLikelyProductCollection(set: RebrickableSetListItem): boolean {
+  if ((set.num_parts ?? 0) <= 0) return true;
+  const name = set.name.toLowerCase();
+  if (
+    /\b(collection|bundle|kit|ultimate|value pack|combo|super pack|complete.*collection)\b/.test(
+      name,
+    )
+  ) {
+    return true;
+  }
+  if (/^K\d/i.test(set.set_num)) return true;
+  if (/^500\d{4}/.test(set.set_num)) return true;
+  return false;
+}
+
+async function setContainsAnyPartNum(
+  setNum: string,
+  partNums: string[],
+  apiKey: string,
+): Promise<boolean> {
+  const wanted = new Set(partNums.map((p) => p.toLowerCase()));
+  const inventory = await fetchAllSetParts(setNum, apiKey);
+  return inventory.some((row) => wanted.has(row.part.part_num.toLowerCase()));
+}
+
+async function filterVerifiedSets(
+  sets: RebrickableSetListItem[],
+  verifyPartNums: string[],
+  apiKey: string,
+  maxVerify = 30,
+): Promise<RebrickableSetListItem[]> {
+  const filtered = sets.filter((s) => !isLikelyProductCollection(s));
+  const verified: RebrickableSetListItem[] = [];
+
+  for (const set of filtered.slice(0, maxVerify)) {
+    if (await setContainsAnyPartNum(set.set_num, verifyPartNums, apiKey)) {
+      verified.push(set);
+    }
+  }
+
+  return verified;
+}
+
+/** Only accept search hits related to the same base mold (e.g. 6082*). */
+function isRelatedPartNum(query: string, partNum: string): boolean {
+  const q = query.toLowerCase();
+  const p = partNum.toLowerCase();
+  if (p === q) return true;
+  const base = q.replace(/(?:pb|pr|pat|p\d+b)\d+$/i, "");
+  if (base.length >= 3 && p.startsWith(base)) return true;
+  return false;
+}
+
+async function fetchPartSetsPage(
   partNum: string,
   apiKey: string,
-  limit = 25,
-): Promise<RebrickableSetListItem[]> {
+): Promise<RebrickableSetListItem[] | null> {
   const results: RebrickableSetListItem[] = [];
   let url: string | null = `${BASE}/lego/parts/${encodeURIComponent(partNum)}/sets/?page_size=1000`;
 
   while (url) {
-    const res: PagedResponse<RebrickableSetListItem> =
-      await fetchJson<PagedResponse<RebrickableSetListItem>>(url, apiKey);
-    results.push(...res.results);
-    url = res.next;
-    if (results.length >= limit) break;
+    const res = await fetchRaw(url, apiKey);
+    if (res.status === 404) return null;
+    if (res.status === 401) throw new Error("Invalid API key");
+    if (res.status === 429) {
+      const body = await res.json().catch(() => ({}));
+      const detail =
+        typeof body === "object" && body && "detail" in body
+          ? String((body as { detail: string }).detail)
+          : "Rate limited — wait a moment and try again";
+      throw new Error(detail);
+    }
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+
+    const page = (await res.json()) as PagedResponse<RebrickableSetListItem>;
+    results.push(...page.results);
+    url = page.next;
   }
 
-  return results
-    .slice(0, limit)
-    .sort((a, b) => (a.num_parts ?? 0) - (b.num_parts ?? 0));
+  return results;
+}
+
+async function fetchPartSetsViaColors(
+  partNum: string,
+  apiKey: string,
+  maxColors = 8,
+): Promise<RebrickableSetListItem[] | null> {
+  const colorsUrl = `${BASE}/lego/parts/${encodeURIComponent(partNum)}/colors/`;
+  const res = await fetchRaw(colorsUrl, apiKey);
+  if (res.status === 404) return null;
+  if (!res.ok) return null;
+
+  const colorsPage = (await res.json()) as PagedResponse<RbPartColorRow>;
+  const colors = colorsPage.results
+    .filter((c) => c.num_sets > 0)
+    .sort((a, b) => b.num_sets - a.num_sets)
+    .slice(0, maxColors);
+
+  if (colors.length === 0) return [];
+
+  const merged: RebrickableSetListItem[] = [];
+  const seen = new Set<string>();
+
+  for (const color of colors) {
+    const colorId = partColorId(color);
+    if (colorId == null) continue;
+    let url: string | null = `${BASE}/lego/parts/${encodeURIComponent(partNum)}/colors/${colorId}/sets/?page_size=1000`;
+    while (url) {
+      const pageRes = await fetchRaw(url, apiKey);
+      if (pageRes.status === 404) break;
+      if (!pageRes.ok) break;
+      const page = (await pageRes.json()) as PagedResponse<RebrickableSetListItem>;
+      for (const s of page.results) {
+        if (!seen.has(s.set_num)) {
+          seen.add(s.set_num);
+          merged.push(s);
+        }
+      }
+      url = page.next;
+    }
+  }
+
+  return merged;
+}
+
+async function enrichCandidatesFromPartNumsParam(
+  partNums: string[],
+  apiKey: string,
+  candidates: string[],
+): Promise<void> {
+  if (partNums.length === 0) return;
+  try {
+    const list = partNums.slice(0, 10).join(",");
+    const data = await fetchJson<PagedResponse<RbPartSummary>>(
+      `${BASE}/lego/parts/?part_nums=${encodeURIComponent(list)}&inc_part_details=1`,
+      apiKey,
+    );
+    for (const part of data.results) {
+      if (!candidates.includes(part.part_num)) candidates.push(part.part_num);
+      if (part.print_of && !candidates.includes(part.print_of)) {
+        candidates.push(part.print_of);
+      }
+    }
+  } catch {
+    // best-effort
+  }
+}
+
+async function enrichCandidatesFromSearch(
+  query: string,
+  apiKey: string,
+  candidates: string[],
+): Promise<void> {
+  try {
+    const data = await fetchJson<PagedResponse<RbPartSummary>>(
+      `${BASE}/lego/parts/?search=${encodeURIComponent(query)}&inc_part_details=1&page_size=10`,
+      apiKey,
+    );
+    for (const part of data.results) {
+      if (!isRelatedPartNum(query, part.part_num)) continue;
+      if (!candidates.includes(part.part_num)) candidates.push(part.part_num);
+      if (part.print_of && !candidates.includes(part.print_of)) {
+        candidates.push(part.print_of);
+      }
+    }
+  } catch {
+    // search is best-effort
+  }
+}
+
+async function enrichCandidatesFromPartDetail(
+  partNum: string,
+  apiKey: string,
+  candidates: string[],
+): Promise<void> {
+  try {
+    const detail = await fetchJson<RbPartSummary>(
+      `${BASE}/lego/parts/${encodeURIComponent(partNum)}/?inc_part_details=1`,
+      apiKey,
+    );
+    if (detail.print_of && !candidates.includes(detail.print_of)) {
+      candidates.push(detail.print_of);
+    }
+  } catch {
+    // detail lookup is best-effort
+  }
+}
+
+export async function getSetsThatContainPart(
+  partNum: string,
+  apiKey: string,
+  limit = 25,
+  rebrickableUrls: string[] = [],
+): Promise<{
+  sets: RebrickableSetListItem[];
+  resolvedPartNum: string;
+  usedBaseMoldFallback: boolean;
+}> {
+  const candidates = candidatePartNums(partNum, rebrickableUrls);
+  await enrichCandidatesFromPartNumsParam(candidates, apiKey, candidates);
+  await enrichCandidatesFromSearch(partNum, apiKey, candidates);
+  for (const c of [...candidates]) {
+    await enrichCandidatesFromPartDetail(c, apiKey, candidates);
+  }
+
+  const ordered = orderedPartCandidates(candidates, partNum);
+  const base = basePartNum(partNum);
+
+  async function collectRawSets(
+    candidate: string,
+  ): Promise<RebrickableSetListItem[]> {
+    const merged = new Map<string, RebrickableSetListItem>();
+    const direct = await fetchPartSetsPage(candidate, apiKey);
+    if (direct) {
+      for (const s of direct) merged.set(s.set_num, s);
+    }
+    const viaColors = await fetchPartSetsViaColors(candidate, apiKey);
+    if (viaColors) {
+      for (const s of viaColors) merged.set(s.set_num, s);
+    }
+    return Array.from(merged.values());
+  }
+
+  // 1) Try exact printed part id(s) first and verify inventory.
+  const exactIds = ordered.filter((c) => c !== base);
+  for (const candidate of exactIds) {
+    const raw = await collectRawSets(candidate);
+    const verified = await filterVerifiedSets(raw, [partNum, candidate], apiKey);
+    if (verified.length > 0) {
+      const list = verified
+        .sort((a, b) => (a.num_parts ?? 0) - (b.num_parts ?? 0))
+        .slice(0, limit);
+      return {
+        sets: list,
+        resolvedPartNum: candidate,
+        usedBaseMoldFallback: false,
+      };
+    }
+  }
+
+  // 2) Fall back to base mold only if exact print had no verified sets.
+  if (base !== partNum && ordered.includes(base)) {
+    const raw = await collectRawSets(base);
+    const verified = await filterVerifiedSets(raw, [base], apiKey);
+    if (verified.length > 0) {
+      const list = verified
+        .sort((a, b) => (a.num_parts ?? 0) - (b.num_parts ?? 0))
+        .slice(0, limit);
+      return {
+        sets: list,
+        resolvedPartNum: base,
+        usedBaseMoldFallback: true,
+      };
+    }
+  }
+
+  throw new Error(
+    `No official LEGO sets found containing "${partNum}" (bundles/collections were excluded). Add a set manually if you know which one you are rebuilding.`,
+  );
 }
