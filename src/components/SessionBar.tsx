@@ -21,7 +21,7 @@ export function SessionBar({
 
   return (
     <header className="flex flex-wrap items-center gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3">
-      <h1 className="text-lg font-bold text-gray-900">Lego Sorter</h1>
+      <h1 className="text-lg font-bold text-gray-900">Bricksort</h1>
       <input
         type="text"
         value={session.name}

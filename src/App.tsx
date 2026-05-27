@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SessionBar } from "./components/SessionBar";
 import { MasterList } from "./components/MasterList";
 import { RoutingPanel } from "./components/RoutingPanel";
@@ -7,16 +7,23 @@ import { SetManager } from "./components/SetManager";
 import { SetProgress } from "./components/SetProgress";
 import { SettingsModal } from "./components/SettingsModal";
 import { BrickognizeSearch } from "./components/BrickognizeSearch";
-import { loadApiKey, parseImportedSession } from "./lib/persist";
+import { isRebrickableReady } from "./api";
+import { parseImportedSession } from "./lib/persist";
 import { useSessionStore } from "./store/sessionStore";
 
 export default function App() {
-  const [settingsOpen, setSettingsOpen] = useState(!loadApiKey());
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [setsOpen, setSetsOpen] = useState(false);
   const [progressOpen, setProgressOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const importSession = useSessionStore((s) => s.importSession);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    isRebrickableReady().then((ok) => {
+      if (!ok) setSettingsOpen(true);
+    });
+  }, []);
 
   function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { testApiKey } from "../api/rebrickable";
-import { loadApiKey, saveApiKey } from "../lib/persist";
-import { clearColorsCache } from "../api/rebrickable";
+import { clearColorsCache, testApiKey, useNodeBackend } from "../api";
+import { loadApiKey } from "../lib/persist";
 
 interface Props {
   open: boolean;
@@ -21,7 +20,6 @@ export function SettingsModal({ open, onClose, onSaved }: Props) {
     setMessage("");
     try {
       await testApiKey(key.trim());
-      saveApiKey(key.trim());
       clearColorsCache();
       setStatus("ok");
       setMessage("API key saved and verified.");
@@ -47,7 +45,10 @@ export function SettingsModal({ open, onClose, onSaved }: Props) {
           >
             rebrickable.com/api
           </a>
-          . Stored only in your browser.
+          .{" "}
+          {useNodeBackend
+            ? "Stored on the local Node server (not in the browser)."
+            : "Stored only in your browser."}
         </p>
         <input
           type="password"

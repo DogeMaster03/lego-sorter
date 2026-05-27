@@ -1,6 +1,8 @@
-# Lego Sorter
+# Bricksort
 
-A desktop app (Electron) for rebuilding multiple official Lego sets from mixed bins. Based on the workflow from [this video](https://www.youtube.com/watch?v=qlhjs82RKiI): load sets, sort physically by **part type**, log finds by **color**, and route pieces to the right sets (smaller sets first).
+A tool for rebuilding multiple official Lego sets from mixed bins.
+
+**Branches:** `main` = Electron desktop app · `nodejs` = browser + Node.js server ([README-NODE.md](README-NODE.md)) Based on the workflow from [this video](https://www.youtube.com/watch?v=qlhjs82RKiI): load sets, sort physically by **part type**, log finds by **color**, and route pieces to the right sets (smaller sets first).
 
 ## Prerequisites
 
@@ -13,7 +15,7 @@ A desktop app (Electron) for rebuilding multiple official Lego sets from mixed b
 Install dependencies and run the app in development mode (Vite hot reload + Electron window):
 
 ```bash
-cd lego-sorter
+cd bricksort
 npm install
 npm run dev
 ```
@@ -61,7 +63,7 @@ npm run pack
 Output (macOS example):
 
 ```
-release/mac-arm64/Lego Sorter.app
+release/mac-arm64/Bricksort.app
 ```
 
 Open that `.app` directly from Finder, or run it from the terminal.
@@ -78,9 +80,9 @@ Outputs depend on the OS you run the command on:
 
 | Platform | Typical outputs in `release/` |
 |----------|-------------------------------|
-| macOS    | `.dmg`, `.zip` (e.g. `Lego Sorter-1.0.0-arm64.dmg`) |
-| Windows  | NSIS installer (e.g. `Lego Sorter Setup 1.0.0.exe`) |
-| Linux    | `AppImage` (e.g. `Lego Sorter-1.0.0.AppImage`) |
+| macOS    | `.dmg`, `.zip` (e.g. `Bricksort-1.0.0-arm64.dmg`) |
+| Windows  | NSIS installer (e.g. `Bricksort Setup 1.0.0.exe`) |
+| Linux    | `AppImage` (e.g. `Bricksort-1.0.0.AppImage`) |
 
 To build for another platform from macOS, you may need extra setup (Wine for Windows, etc.). See [electron-builder multi-platform docs](https://www.electron.build/multi-platform-build).
 
@@ -99,7 +101,7 @@ To build for another platform from macOS, you may need extra setup (Wine for Win
 ### Project layout (build-related)
 
 ```
-lego-sorter/
+bricksort/
   dist/              # Built React app (created by npm run build)
   electron/
     main.mjs         # Electron main process

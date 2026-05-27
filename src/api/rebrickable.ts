@@ -219,6 +219,11 @@ function basePartNum(partNum: string): string {
   return partNum.replace(/(?:pb|pr|pat|p\d+b)\d+$/i, "");
 }
 
+/** True if part id is a printed/pattern variant (e.g. 6082pb01, 30303pr0001). */
+export function isPrintedPartNum(partNum: string): boolean {
+  return /(?:pb|pr|pat|p\d+b)\d+$/i.test(partNum);
+}
+
 /** Build candidate Rebrickable part numbers for a Brickognize id. */
 function candidatePartNums(
   brickognizeId: string,
@@ -236,14 +241,20 @@ function candidatePartNums(
     if (fromUrl) add(fromUrl);
   }
 
-  const base = basePartNum(brickognizeId);
-  if (base !== brickognizeId) add(base);
+  // Only add base-mold fallback when Brickognize identified a printed part.
+  if (isPrintedPartNum(brickognizeId)) {
+    const base = basePartNum(brickognizeId);
+    if (base !== brickognizeId) add(base);
+  }
 
   return candidates;
 }
 
-/** Exact print ids first; base mold fallback last. */
+/** Printed ids first, then base mold (only when query was a print). */
 function orderedPartCandidates(candidates: string[], originalId: string): string[] {
+  if (!isPrintedPartNum(originalId)) {
+    return [originalId, ...candidates.filter((c) => c !== originalId)];
+  }
   const base = basePartNum(originalId);
   const exact = candidates.filter((c) => c !== base);
   const fallback = candidates.filter((c) => c === base);
@@ -293,13 +304,14 @@ async function filterVerifiedSets(
   return verified;
 }
 
-/** Only accept search hits related to the same base mold (e.g. 6082*). */
+/** Related part for search enrichment — never pull prints when query is plain. */
 function isRelatedPartNum(query: string, partNum: string): boolean {
   const q = query.toLowerCase();
   const p = partNum.toLowerCase();
   if (p === q) return true;
-  const base = q.replace(/(?:pb|pr|pat|p\d+b)\d+$/i, "");
-  if (base.length >= 3 && p.startsWith(base)) return true;
+  if (!isPrintedPartNum(query)) return false;
+  const base = basePartNum(query).toLowerCase();
+  if (p === base) return true;
   return false;
 }
 
@@ -379,6 +391,7 @@ async function enrichCandidatesFromPartNumsParam(
   partNums: string[],
   apiKey: string,
   candidates: string[],
+  originalId: string,
 ): Promise<void> {
   if (partNums.length === 0) return;
   try {
@@ -388,8 +401,13 @@ async function enrichCandidatesFromPartNumsParam(
       apiKey,
     );
     for (const part of data.results) {
+      if (!isRelatedPartNum(originalId, part.part_num)) continue;
       if (!candidates.includes(part.part_num)) candidates.push(part.part_num);
-      if (part.print_of && !candidates.includes(part.print_of)) {
+      if (
+        isPrintedPartNum(originalId) &&
+        part.print_of &&
+        !candidates.includes(part.print_of)
+      ) {
         candidates.push(part.print_of);
       }
     }
@@ -403,6 +421,7 @@ async function enrichCandidatesFromSearch(
   apiKey: string,
   candidates: string[],
 ): Promise<void> {
+  if (!isPrintedPartNum(query)) return;
   try {
     const data = await fetchJson<PagedResponse<RbPartSummary>>(
       `${BASE}/lego/parts/?search=${encodeURIComponent(query)}&inc_part_details=1&page_size=10`,
@@ -424,7 +443,9 @@ async function enrichCandidatesFromPartDetail(
   partNum: string,
   apiKey: string,
   candidates: string[],
+  originalId: string,
 ): Promise<void> {
+  if (!isPrintedPartNum(originalId)) return;
   try {
     const detail = await fetchJson<RbPartSummary>(
       `${BASE}/lego/parts/${encodeURIComponent(partNum)}/?inc_part_details=1`,
@@ -449,14 +470,15 @@ export async function getSetsThatContainPart(
   usedBaseMoldFallback: boolean;
 }> {
   const candidates = candidatePartNums(partNum, rebrickableUrls);
-  await enrichCandidatesFromPartNumsParam(candidates, apiKey, candidates);
+  await enrichCandidatesFromPartNumsParam(candidates, apiKey, candidates, partNum);
   await enrichCandidatesFromSearch(partNum, apiKey, candidates);
   for (const c of [...candidates]) {
-    await enrichCandidatesFromPartDetail(c, apiKey, candidates);
+    await enrichCandidatesFromPartDetail(c, apiKey, candidates, partNum);
   }
 
   const ordered = orderedPartCandidates(candidates, partNum);
   const base = basePartNum(partNum);
+  const strictPlain = !isPrintedPartNum(partNum);
 
   async function collectRawSets(
     candidate: string,
@@ -473,11 +495,14 @@ export async function getSetsThatContainPart(
     return Array.from(merged.values());
   }
 
-  // 1) Try exact printed part id(s) first and verify inventory.
-  const exactIds = ordered.filter((c) => c !== base);
-  for (const candidate of exactIds) {
+  // 1) Try candidates in order; verify inventory contains that exact part id.
+  const primaryIds = strictPlain
+    ? ordered.filter((c) => !isPrintedPartNum(c))
+    : ordered.filter((c) => c !== base);
+
+  for (const candidate of primaryIds) {
     const raw = await collectRawSets(candidate);
-    const verified = await filterVerifiedSets(raw, [partNum, candidate], apiKey);
+    const verified = await filterVerifiedSets(raw, [candidate], apiKey);
     if (verified.length > 0) {
       const list = verified
         .sort((a, b) => (a.num_parts ?? 0) - (b.num_parts ?? 0))
@@ -490,8 +515,8 @@ export async function getSetsThatContainPart(
     }
   }
 
-  // 2) Fall back to base mold only if exact print had no verified sets.
-  if (base !== partNum && ordered.includes(base)) {
+  // 2) Fall back to base mold only when Brickognize identified a printed part.
+  if (!strictPlain && base !== partNum && ordered.includes(base)) {
     const raw = await collectRawSets(base);
     const verified = await filterVerifiedSets(raw, [base], apiKey);
     if (verified.length > 0) {

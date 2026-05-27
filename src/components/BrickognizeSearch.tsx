@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getSetsThatContainPart, loadSet } from "../api/rebrickable";
-import { loadApiKey } from "../lib/persist";
+import {
+  brickognizePredictParts,
+  getApiKeyForClient,
+  getSetsThatContainPart,
+  isPrintedPartNum,
+  isRebrickableReady,
+  loadSet,
+} from "../api";
 import { useSessionStore } from "../store/sessionStore";
 
 type BrickognizeItem = {
@@ -117,12 +123,8 @@ export function BrickognizeSearch({ open, onClose }: Props) {
     try {
       const video = videoRef.current;
       if (!video) throw new Error("Camera not ready");
-      if (!window.electronAPI?.brickognizePredictParts) {
-        throw new Error("Brickognize is only available in the Electron app.");
-      }
-
       const bytes = await captureFrame(video);
-      const raw = await window.electronAPI.brickognizePredictParts(bytes);
+      const raw = await brickognizePredictParts(bytes);
       const parsed = raw as BrickognizeResponse;
 
       const items = Array.isArray(parsed?.items) ? parsed.items : [];
@@ -152,10 +154,10 @@ export function BrickognizeSearch({ open, onClose }: Props) {
     setActivePart(item);
     setCandidateSets([]);
     try {
-      const apiKey = loadApiKey();
-      if (!apiKey) {
+      if (!(await isRebrickableReady())) {
         throw new Error("Add your Rebrickable API key in Settings first.");
       }
+      const apiKey = getApiKeyForClient();
       const rebrickableUrls =
         item.external_sites
           ?.filter((s) => /rebrickable/i.test(s.name) || /rebrickable\.com/i.test(s.url))
@@ -181,11 +183,11 @@ export function BrickognizeSearch({ open, onClose }: Props) {
   }
 
   async function handleAddSet(setNum: string) {
-    const apiKey = loadApiKey();
-    if (!apiKey) {
+    if (!(await isRebrickableReady())) {
       setSetsError("Add your Rebrickable API key in Settings first.");
       return;
     }
+    const apiKey = getApiKeyForClient();
     setLoadingSet(true, null);
     try {
       const loaded = await loadSet(setNum, apiKey);
@@ -340,9 +342,15 @@ export function BrickognizeSearch({ open, onClose }: Props) {
                 {resolvedPartNum &&
                   resolvedPartNum !== activePart.id &&
                   !usedBaseMold && (
-                    <div className="mt-1 text-xs text-gray-500">
-                      Rebrickable lookup used part id:{" "}
+                    <div className="mt-1 text-xs text-amber-800">
+                      Rebrickable matched{" "}
                       <span className="font-mono">{resolvedPartNum}</span>
+                      {isPrintedPartNum(resolvedPartNum) &&
+                      !isPrintedPartNum(activePart.id)
+                        ? " (a printed variant)"
+                        : ""}{" "}
+                      instead of scanned{" "}
+                      <span className="font-mono">{activePart.id}</span>.
                     </div>
                   )}
                 {candidateSets.length > 0 && (
