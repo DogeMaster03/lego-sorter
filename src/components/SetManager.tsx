@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { loadSet } from "../api/rebrickable";
-import { loadApiKey } from "../lib/persist";
+import { getApiKeyForClient, isRebrickableReady, loadSet } from "../api";
 import { useSessionStore } from "../store/sessionStore";
 
 interface Props {
@@ -23,11 +22,11 @@ export function SetManager({ open, onClose }: Props) {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    const apiKey = loadApiKey();
-    if (!apiKey) {
+    if (!(await isRebrickableReady())) {
       setLoadingSet(false, "Add your Rebrickable API key in Settings first.");
       return;
     }
+    const apiKey = getApiKeyForClient();
     const trimmed = input.trim();
     if (!trimmed) return;
 
