@@ -128,7 +128,13 @@ export function BrickognizeSearch({ open, onClose }: Props) {
       const parsed = raw as BrickognizeResponse;
 
       const items = Array.isArray(parsed?.items) ? parsed.items : [];
-      setResults(items.filter((i) => i.type === "part"));
+      const parts = items.filter((i) => i.type === "part");
+      setResults(parts);
+      if (parts.length === 0 && items.length > 0) {
+        setError("Brickognize found matches, but none were parts. Try a clearer photo.");
+      } else if (parts.length === 0) {
+        setError("No parts identified. Try better lighting and a plain background.");
+      }
       setActivePart(null);
       setCandidateSets([]);
       setSetsError("");
@@ -212,17 +218,17 @@ export function BrickognizeSearch({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
-        <div className="border-b border-gray-200 p-4">
+      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white shadow-xl dark:bg-gray-900">
+        <div className="border-b border-gray-200 p-4 dark:border-gray-800">
           <h2 className="text-lg font-semibold">Camera search (Brickognize)</h2>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Point your webcam at a single part on a plain background, then click
             Capture. Results are best with good lighting and no occlusion.
           </p>
         </div>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 md:grid-cols-2">
-          <div className="min-h-0 border-b border-gray-200 p-4 md:border-b-0 md:border-r">
+          <div className="min-h-0 border-b border-gray-200 p-4 md:border-b-0 md:border-r dark:border-gray-800">
             <div className="aspect-video w-full overflow-hidden rounded border border-gray-200 bg-black">
               <video ref={videoRef} className="h-full w-full object-contain" />
             </div>
@@ -238,26 +244,26 @@ export function BrickognizeSearch({ open, onClose }: Props) {
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+                className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
               >
                 Close
               </button>
             </div>
-            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+            {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
             {!error && !stream && (
-              <p className="mt-2 text-sm text-gray-500">Starting camera…</p>
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Starting camera…</p>
             )}
           </div>
 
           <div className="min-h-0 overflow-auto p-4">
-            <h3 className="text-sm font-semibold text-gray-800">Results</h3>
-            <p className="text-xs text-gray-500">
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Results</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Only parts are shown. Items already present in your loaded sets are
               highlighted.
             </p>
 
             {results.length === 0 ? (
-              <p className="mt-3 text-sm text-gray-500">
+              <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
                 No results yet. Capture an image to search.
               </p>
             ) : (
@@ -269,8 +275,8 @@ export function BrickognizeSearch({ open, onClose }: Props) {
                       key={item.id}
                       className={`flex items-center gap-3 rounded border p-3 ${
                         inSession
-                          ? "border-green-300 bg-green-50"
-                          : "border-gray-200 bg-white"
+                          ? "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/40"
+                          : "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
                       }`}
                     >
                       <img
@@ -279,14 +285,14 @@ export function BrickognizeSearch({ open, onClose }: Props) {
                         className="h-14 w-14 object-contain"
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="font-mono text-xs text-gray-500">
+                        <div className="font-mono text-xs text-gray-500 dark:text-gray-400">
                           {item.id} · score {item.score.toFixed(2)}
                         </div>
                         <div className="truncate text-sm font-medium">
                           {item.name}
                         </div>
                         {item.category ? (
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
                             {item.category}
                           </div>
                         ) : null}
@@ -296,7 +302,7 @@ export function BrickognizeSearch({ open, onClose }: Props) {
                           type="button"
                           onClick={() => handleUsePart(item.id)}
                           disabled={!inSession}
-                          className="rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+                          className="rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:hover:bg-gray-700"
                           title={
                             inSession
                               ? "Select this part in the master list"
@@ -325,14 +331,14 @@ export function BrickognizeSearch({ open, onClose }: Props) {
             )}
 
             {activePart && (
-              <div className="mt-4 rounded border border-gray-200 bg-gray-50 p-3">
-                <div className="text-sm font-semibold text-gray-800">
+              <div className="mt-4 rounded border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
+                <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">
                   Load a set that contains:{" "}
                   <span className="font-mono">{activePart.id}</span>
                 </div>
-                <div className="text-xs text-gray-600">{activePart.name}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">{activePart.name}</div>
                 {usedBaseMold && (
-                  <div className="mt-1 text-xs text-amber-800">
+                  <div className="mt-1 text-xs text-amber-800 dark:text-amber-300">
                     Showing sets with the base mold{" "}
                     <span className="font-mono">{resolvedPartNum}</span>, not
                     this exact print. The piece shape matches, but color/print
@@ -342,7 +348,7 @@ export function BrickognizeSearch({ open, onClose }: Props) {
                 {resolvedPartNum &&
                   resolvedPartNum !== activePart.id &&
                   !usedBaseMold && (
-                    <div className="mt-1 text-xs text-amber-800">
+                    <div className="mt-1 text-xs text-amber-800 dark:text-amber-300">
                       Rebrickable matched{" "}
                       <span className="font-mono">{resolvedPartNum}</span>
                       {isPrintedPartNum(resolvedPartNum) &&
@@ -354,15 +360,15 @@ export function BrickognizeSearch({ open, onClose }: Props) {
                     </div>
                   )}
                 {candidateSets.length > 0 && (
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     Verified against set inventories (bundles excluded).
                   </p>
                 )}
 
                 {setsError && (
                   <div className="mt-2 space-y-2">
-                    <p className="text-sm text-red-600">{setsError}</p>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-sm text-red-600 dark:text-red-400">{setsError}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
                       If you know which set this part belongs to, add it by number:
                     </p>
                     <div className="flex gap-2">
@@ -371,7 +377,7 @@ export function BrickognizeSearch({ open, onClose }: Props) {
                         value={manualSetNum}
                         onChange={(e) => setManualSetNum(e.target.value)}
                         placeholder="e.g. 6030-1"
-                        className="flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm"
+                        className="flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                       />
                       <button
                         type="button"
@@ -387,7 +393,7 @@ export function BrickognizeSearch({ open, onClose }: Props) {
                         href={`https://rebrickable.com/parts/${encodeURIComponent(activePart.id)}/`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs text-blue-600 underline"
+                        className="text-xs text-blue-600 underline dark:text-blue-400"
                       >
                         View part on Rebrickable
                       </a>
@@ -400,13 +406,13 @@ export function BrickognizeSearch({ open, onClose }: Props) {
                     {candidateSets.slice(0, 8).map((s) => (
                       <li
                         key={s.setNum}
-                        className="flex items-center justify-between gap-3 rounded border border-gray-200 bg-white px-3 py-2"
+                        className="flex items-center justify-between gap-3 rounded border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
                       >
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium">
                             {s.name}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
                             {s.setNum} · {s.year} · {s.numParts} parts
                           </div>
                         </div>

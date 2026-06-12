@@ -14,13 +14,15 @@ export { isPrintedPartNum, partNumFromRebrickableUrl } from "./rebrickable";
 export { clearColorsCache } from "./rebrickable";
 
 export async function isRebrickableReady(): Promise<boolean> {
+  if (loadApiKey()) return true;
   if (useNodeBackend) return backend.isRebrickableConfigured();
-  return !!loadApiKey();
+  return false;
 }
 
 export async function testApiKey(key: string): Promise<boolean> {
   if (useNodeBackend) {
     await backend.configureRebrickableKey(key);
+    saveApiKey(key);
     markServerKeyConfigured();
     return true;
   }
@@ -70,8 +72,8 @@ export async function brickognizePredictParts(
 }
 
 export function getApiKeyForClient(): string {
-  if (useNodeBackend) return "";
   return loadApiKey();
 }
 
+export { getRebrickableKeyStatus } from "./backend";
 export { isServerKeyConfigured };

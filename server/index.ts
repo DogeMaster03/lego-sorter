@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import {
   getRebrickableApiKey,
   hasRebrickableApiKey,
+  isServerKeyEnvOnly,
   setRebrickableApiKey,
 } from "./config.js";
 import { predictParts } from "./brickognize.js";
@@ -22,19 +23,29 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "12mb" }));
 
-app.get("/api/health", (_req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({
     ok: true,
-    rebrickableConfigured: hasRebrickableApiKey(),
+    rebrickableConfigured: hasRebrickableApiKey(req.headers),
   });
 });
 
-app.get("/api/settings/rebrickable-key", (_req, res) => {
-  res.json({ configured: hasRebrickableApiKey() });
+app.get("/api/settings/rebrickable-key", (req, res) => {
+  res.json({
+    configured: hasRebrickableApiKey(req.headers),
+    envOnly: isServerKeyEnvOnly(),
+  });
 });
 
 app.post("/api/settings/rebrickable-key", async (req, res) => {
   try {
+    if (isServerKeyEnvOnly()) {
+      res.status(400).json({
+        error:
+          "This deployment uses REBRICKABLE_API_KEY from server environment variables.",
+      });
+      return;
+    }
     const key = String(req.body?.key ?? "").trim();
     if (!key) {
       res.status(400).json({ error: "API key is required" });
@@ -52,7 +63,7 @@ app.post("/api/settings/rebrickable-key", async (req, res) => {
 
 app.get("/api/sets/:setNum", async (req, res) => {
   try {
-    const set = await loadSet(req.params.setNum, getRebrickableApiKey());
+    const set = await loadSet(req.params.setNum, getRebrickableApiKey(req.headers));
     res.json(set);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to load set";
@@ -71,7 +82,7 @@ app.get("/api/parts/:partNum/sets", async (req, res) => {
 
     const result = await getSetsThatContainPart(
       req.params.partNum,
-      getRebrickableApiKey(),
+      getRebrickableApiKey(req.headers),
       25,
       rebrickableUrls,
     );
@@ -85,10 +96,16 @@ app.get("/api/parts/:partNum/sets", async (req, res) => {
 
 app.post(
   "/api/brickognize/predict-parts",
-  express.raw({ type: ["image/jpeg", "image/png", "application/octet-stream"], limit: "12mb" }),
+  express.json({ limit: "12mb" }),
   async (req, res) => {
     try {
-      const buffer = Buffer.from(req.body);
+      let buffer: Buffer;
+      if (typeof req.body?.image === "string") {
+        buffer = Buffer.from(req.body.image, "base64");
+      } else {
+        res.status(400).json({ error: "Missing image in request body" });
+        return;
+      }
       if (!buffer.length) {
         res.status(400).json({ error: "Empty image" });
         return;

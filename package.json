@@ -4,14 +4,18 @@
   "version": "1.0.0",
   "type": "module",
   "main": "electron/main.cjs",
+  "vercel": {
+    "framework": "vite"
+  },
   "scripts": {
-    "postinstall": "node scripts/install-electron.mjs",
+    "postinstall": "node -e \"if (!process.env.VERCEL) import('./scripts/install-electron.mjs')\"",
     "electron:install": "node scripts/install-electron.mjs",
     "dev": "concurrently -k \"vite\" \"wait-on http://127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 node scripts/run-electron.cjs .\"",
     "dev:node": "concurrently -k \"cross-env VITE_BACKEND=node vite\" \"tsx watch server/index.ts\"",
     "dev:web": "vite",
     "build": "tsc && vite build",
     "build:node": "cross-env VITE_BACKEND=node npm run build",
+    "build:vercel": "cross-env VITE_BACKEND=node npm run build",
     "start:node": "cross-env NODE_ENV=production tsx server/index.ts",
     "start": "node scripts/run-electron.cjs .",
     "pack": "npm run build && electron-builder --dir",
@@ -20,23 +24,24 @@
     "test:alloc": "node --experimental-strip-types src/lib/allocation.test.ts 2>/dev/null || npx tsx src/lib/allocation.test.ts"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.21.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
-    "@tailwindcss/vite": "^4.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vercel/node": "^5.8.17",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.2",
+    "cors": "^2.8.5",
     "cross-env": "^7.0.3",
     "electron": "^42.2.0",
     "electron-builder": "^25.1.8",
+    "express": "^4.21.2",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.3",
     "typescript": "~5.7.2",
