@@ -12,19 +12,36 @@ This repo includes `vercel.json` and `api/` routes that:
 
 ## Deploy steps
 
-1. Push the `nodejs` branch (or `main` with these files) to GitHub.
+1. Push the `nodejs` branch to GitHub.
 2. Import the repo in [Vercel](https://vercel.com/new).
-3. **Root directory:** `bricksort` (if the repo root is `vibecoding`, set this).
-4. **Environment variable** (required):
+3. **Root directory:** `bricksort` (required if the repo root is `vibecoding`).
+4. **Framework preset:** Vite (should auto-detect from `vercel.json`; if not, set manually).
+5. **Environment variable** (required):
 
    | Name | Value |
    |------|--------|
    | `REBRICKABLE_API_KEY` | Your [Rebrickable API key](https://rebrickable.com/api/) |
 
-5. Deploy. Vercel uses:
+6. Deploy. Vercel uses:
+   - **Framework:** Vite
    - **Build command:** `npm run build:vercel`
    - **Output directory:** `dist`
    - **Install command:** skips Electron postinstall and removes Electron packages
+
+## Troubleshooting
+
+### "No entrypoint found"
+
+Vercel tried to deploy as a Node server instead of a Vite static site. Fix:
+
+1. Set **Root Directory** to `bricksort` (so `vercel.json` is found).
+2. Set **Framework Preset** to **Vite** in Project Settings → General.
+3. Ensure **Build Command** is `npm run build:vercel` and **Output Directory** is `dist`.
+4. Do **not** set a custom Node.js entrypoint or `start` command in Vercel.
+
+### 250 MB function size
+
+Ensure the install command in `vercel.json` runs (skips Electron). Redeploy after pulling the latest `nodejs` branch.
 
 ## Notes
 
