@@ -15,7 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const set = await loadSet(setNum, getRebrickableApiKey());
+    const set = await loadSet(setNum, getRebrickableApiKey(req.headers));
     res.json(set);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to load set";

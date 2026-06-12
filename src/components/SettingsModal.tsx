@@ -71,7 +71,7 @@ export function SettingsModal({ open, onClose, onSaved }: Props) {
           {envOnly
             ? "Configured via REBRICKABLE_API_KEY on the server."
             : useNodeBackend
-              ? "Stored on the Node server (not in the browser)."
+              ? "Stored in your browser and sent with each API request."
               : "Stored only in your browser."}
         </p>
         {envOnly ? (

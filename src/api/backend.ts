@@ -1,10 +1,23 @@
 import type { LoadedSet } from "../lib/types";
+import { loadApiKey } from "../lib/persist";
 import type { RebrickableSetListItem } from "./rebrickable";
 
 const API = "/api";
 
+function apiHeaders(extra?: HeadersInit): HeadersInit {
+  const headers = new Headers(extra);
+  const key = loadApiKey();
+  if (key && !headers.has("Authorization")) {
+    headers.set("Authorization", `key ${key}`);
+  }
+  return headers;
+}
+
 async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, init);
+  const res = await fetch(`${API}${path}`, {
+    ...init,
+    headers: apiHeaders(init?.headers),
+  });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg =
@@ -24,6 +37,7 @@ export async function getRebrickableKeyStatus(): Promise<{
 }
 
 export async function isRebrickableConfigured(): Promise<boolean> {
+  if (loadApiKey()) return true;
   const data = await getRebrickableKeyStatus();
   return data.configured;
 }

@@ -16,11 +16,13 @@ This repo includes `vercel.json` and `api/` routes that:
 2. Import the repo in [Vercel](https://vercel.com/new).
 3. **Root directory:** `bricksort` (required if the repo root is `vibecoding`).
 4. **Framework preset:** Vite (should auto-detect from `vercel.json`; if not, set manually).
-5. **Environment variable** (required):
+5. **Environment variable** (optional — if set, Settings is read-only):
 
    | Name | Value |
    |------|--------|
    | `REBRICKABLE_API_KEY` | Your [Rebrickable API key](https://rebrickable.com/api/) |
+
+   If you skip this, open **Settings** after deploy and paste your key. It is stored in your browser and sent with each API request (needed for Camera → Find sets).
 
 6. Deploy. Vercel uses:
    - **Framework:** Vite
@@ -45,7 +47,7 @@ Ensure the install command in `vercel.json` runs (skips Electron). Redeploy afte
 
 ## Notes
 
-- The API key is read from `REBRICKABLE_API_KEY` only (not saved in the browser or in-memory on Vercel).
+- The API key can come from **Settings** (browser `localStorage`, sent per request) or from **`REBRICKABLE_API_KEY`** on the server.
 - Camera / Brickognize works via `/api/brickognize/predict-parts`.
 - Session data still saves in the browser (`localStorage`).
 - For local development with the Node server, use `npm run dev:node` as before.

@@ -8,7 +8,10 @@ import { testApiKey } from "../../src/api/rebrickable";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "GET") {
-    res.json({ configured: hasRebrickableApiKey(), envOnly: isServerKeyEnvOnly() });
+    res.json({
+      configured: hasRebrickableApiKey(req.headers),
+      envOnly: isServerKeyEnvOnly(),
+    });
     return;
   }
 
@@ -20,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (isServerKeyEnvOnly()) {
     res.status(400).json({
       error:
-        "This deployment uses REBRICKABLE_API_KEY from server environment variables. Set it in your Vercel project settings.",
+        "This deployment uses REBRICKABLE_API_KEY from server environment variables.",
     });
     return;
   }

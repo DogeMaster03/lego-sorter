@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const result = await getSetsThatContainPart(
       partNum,
-      getRebrickableApiKey(),
+      getRebrickableApiKey(req.headers),
       25,
       rebrickableUrls,
     );

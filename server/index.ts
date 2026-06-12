@@ -23,15 +23,18 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "12mb" }));
 
-app.get("/api/health", (_req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({
     ok: true,
-    rebrickableConfigured: hasRebrickableApiKey(),
+    rebrickableConfigured: hasRebrickableApiKey(req.headers),
   });
 });
 
-app.get("/api/settings/rebrickable-key", (_req, res) => {
-  res.json({ configured: hasRebrickableApiKey(), envOnly: isServerKeyEnvOnly() });
+app.get("/api/settings/rebrickable-key", (req, res) => {
+  res.json({
+    configured: hasRebrickableApiKey(req.headers),
+    envOnly: isServerKeyEnvOnly(),
+  });
 });
 
 app.post("/api/settings/rebrickable-key", async (req, res) => {
@@ -60,7 +63,7 @@ app.post("/api/settings/rebrickable-key", async (req, res) => {
 
 app.get("/api/sets/:setNum", async (req, res) => {
   try {
-    const set = await loadSet(req.params.setNum, getRebrickableApiKey());
+    const set = await loadSet(req.params.setNum, getRebrickableApiKey(req.headers));
     res.json(set);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to load set";
@@ -79,7 +82,7 @@ app.get("/api/parts/:partNum/sets", async (req, res) => {
 
     const result = await getSetsThatContainPart(
       req.params.partNum,
-      getRebrickableApiKey(),
+      getRebrickableApiKey(req.headers),
       25,
       rebrickableUrls,
     );
