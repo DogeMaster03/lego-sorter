@@ -16,10 +16,15 @@ async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+export async function getRebrickableKeyStatus(): Promise<{
+  configured: boolean;
+  envOnly: boolean;
+}> {
+  return apiJson("/settings/rebrickable-key");
+}
+
 export async function isRebrickableConfigured(): Promise<boolean> {
-  const data = await apiJson<{ configured: boolean }>(
-    "/settings/rebrickable-key",
-  );
+  const data = await getRebrickableKeyStatus();
   return data.configured;
 }
 

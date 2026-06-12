@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import {
   getRebrickableApiKey,
   hasRebrickableApiKey,
+  isServerKeyEnvOnly,
   setRebrickableApiKey,
 } from "./config.js";
 import { predictParts } from "./brickognize.js";
@@ -30,11 +31,18 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.get("/api/settings/rebrickable-key", (_req, res) => {
-  res.json({ configured: hasRebrickableApiKey() });
+  res.json({ configured: hasRebrickableApiKey(), envOnly: isServerKeyEnvOnly() });
 });
 
 app.post("/api/settings/rebrickable-key", async (req, res) => {
   try {
+    if (isServerKeyEnvOnly()) {
+      res.status(400).json({
+        error:
+          "This deployment uses REBRICKABLE_API_KEY from server environment variables.",
+      });
+      return;
+    }
     const key = String(req.body?.key ?? "").trim();
     if (!key) {
       res.status(400).json({ error: "API key is required" });

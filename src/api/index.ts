@@ -74,4 +74,5 @@ export function getApiKeyForClient(): string {
   return loadApiKey();
 }
 
+export { getRebrickableKeyStatus } from "./backend";
 export { isServerKeyConfigured };

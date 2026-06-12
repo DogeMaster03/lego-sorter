@@ -1,0 +1,7 @@
+release/
+electron/
+scripts/install-electron.mjs
+scripts/run-electron.cjs
+*.dmg
+*.zip
+*.AppImage
