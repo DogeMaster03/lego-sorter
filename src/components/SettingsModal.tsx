@@ -8,6 +8,12 @@ interface Props {
   onSaved: () => void;
 }
 
+const inputClass =
+  "w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100";
+
+const secondaryBtnClass =
+  "rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800";
+
 export function SettingsModal({ open, onClose, onSaved }: Props) {
   const [key, setKey] = useState(loadApiKey);
   const [status, setStatus] = useState<"idle" | "testing" | "ok" | "error">("idle");
@@ -33,15 +39,15 @@ export function SettingsModal({ open, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-gray-900">Rebrickable API Key</h2>
-        <p className="mt-2 text-sm text-gray-600">
+      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Rebrickable API Key</h2>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           Get a free key at{" "}
           <a
             href="https://rebrickable.com/api/"
             target="_blank"
             rel="noreferrer"
-            className="text-blue-600 underline"
+            className="text-blue-600 underline dark:text-blue-400"
           >
             rebrickable.com/api
           </a>
@@ -55,21 +61,17 @@ export function SettingsModal({ open, onClose, onSaved }: Props) {
           value={key}
           onChange={(e) => setKey(e.target.value)}
           placeholder="Paste API key"
-          className="mt-4 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+          className={`mt-4 ${inputClass}`}
         />
         {message && (
           <p
-            className={`mt-2 text-sm ${status === "error" ? "text-red-600" : "text-green-700"}`}
+            className={`mt-2 text-sm ${status === "error" ? "text-red-600 dark:text-red-400" : "text-green-700 dark:text-green-400"}`}
           >
             {message}
           </p>
         )}
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
-          >
+          <button type="button" onClick={onClose} className={secondaryBtnClass}>
             Cancel
           </button>
           <button

@@ -4,7 +4,10 @@ import "./index.css";
 import App from "./App";
 import { useSessionStore } from "./store/sessionStore";
 
+import { initTheme } from "./lib/theme";
+
 useSessionStore.getState().initSession();
+initTheme();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

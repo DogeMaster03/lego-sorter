@@ -6,6 +6,12 @@ interface Props {
   onClose: () => void;
 }
 
+const inputClass =
+  "rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100";
+
+const secondaryBtnClass =
+  "rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800";
+
 export function SetProgress({ open, onClose }: Props) {
   const session = useSessionStore((s) => s.session);
   const getSetProgress = useSessionStore((s) => s.getSetProgress);
@@ -20,14 +26,14 @@ export function SetProgress({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg bg-white shadow-xl">
-        <div className="border-b border-gray-200 p-4">
+      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg bg-white shadow-xl dark:bg-gray-900">
+        <div className="border-b border-gray-200 p-4 dark:border-gray-800">
           <h2 className="text-lg font-semibold">Set progress</h2>
           {session.sets.length > 0 && (
             <select
               value={selectedSetNum}
               onChange={(e) => setSelectedSetNum(e.target.value)}
-              className="mt-2 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+              className={`mt-2 w-full ${inputClass}`}
             >
               {session.sets.map((s) => (
                 <option key={s.setNum} value={s.setNum}>
@@ -38,13 +44,13 @@ export function SetProgress({ open, onClose }: Props) {
           )}
           {prog && (
             <div className="mt-2">
-              <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                 <div
-                  className="h-full bg-green-600 transition-all"
+                  className="h-full bg-green-600 transition-all dark:bg-green-500"
                   style={{ width: `${prog.percent}%` }}
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-600">
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                 {prog.complete} / {prog.total} parts ({prog.percent}%)
               </p>
             </div>
@@ -53,16 +59,16 @@ export function SetProgress({ open, onClose }: Props) {
 
         <div className="flex-1 overflow-auto">
           {!selected ? (
-            <p className="p-4 text-sm text-gray-500">Add sets to view progress.</p>
+            <p className="p-4 text-sm text-gray-500 dark:text-gray-400">Add sets to view progress.</p>
           ) : (
             <table className="w-full text-left text-sm">
-              <thead className="sticky top-0 bg-gray-100 text-xs text-gray-600">
+              <thead className="sticky top-0 bg-gray-100 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400">
                 <tr>
-                  <th className="px-3 py-2 w-10"></th>
+                  <th className="w-10 px-3 py-2"></th>
                   <th className="px-3 py-2">Part</th>
                   <th className="px-3 py-2">Color</th>
-                  <th className="px-3 py-2 w-16 text-right">Need</th>
-                  <th className="px-3 py-2 w-16 text-right">Found</th>
+                  <th className="w-16 px-3 py-2 text-right">Need</th>
+                  <th className="w-16 px-3 py-2 text-right">Found</th>
                 </tr>
               </thead>
               <tbody>
@@ -71,7 +77,7 @@ export function SetProgress({ open, onClose }: Props) {
                   return (
                     <tr
                       key={`${part.partNum}-${part.colorId}-${i}`}
-                      className={`border-b border-gray-100 ${done ? "bg-green-50/60" : ""}`}
+                      className={`border-b border-gray-100 dark:border-gray-800 ${done ? "bg-green-50/60 dark:bg-green-950/30" : ""}`}
                     >
                       <td className="px-3 py-1.5">
                         {part.partImgUrl ? (
@@ -83,7 +89,7 @@ export function SetProgress({ open, onClose }: Props) {
                         ) : null}
                       </td>
                       <td className="px-3 py-1.5">
-                        <div className="font-mono text-xs text-gray-500">
+                        <div className="font-mono text-xs text-gray-500 dark:text-gray-400">
                           {part.partNum}
                         </div>
                         <div className="line-clamp-1">{part.partName}</div>
@@ -101,12 +107,8 @@ export function SetProgress({ open, onClose }: Props) {
           )}
         </div>
 
-        <div className="border-t border-gray-200 p-4 text-right">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
-          >
+        <div className="border-t border-gray-200 p-4 text-right dark:border-gray-800">
+          <button type="button" onClick={onClose} className={secondaryBtnClass}>
             Close
           </button>
         </div>

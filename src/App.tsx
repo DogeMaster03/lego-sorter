@@ -42,7 +42,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-white text-gray-900">
+    <div className="flex h-screen flex-col bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <SessionBar
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenSets={() => setSetsOpen(true)}
@@ -63,7 +63,7 @@ export default function App() {
         <div className="hidden min-h-0 lg:block">
           <RoutingPanel />
         </div>
-        <div className="min-h-0 border-x border-gray-200">
+        <div className="min-h-0 border-x border-gray-200 dark:border-gray-800">
           <MasterList />
         </div>
         <div className="min-h-0">
@@ -71,7 +71,7 @@ export default function App() {
         </div>
       </main>
 
-      <div className="border-t border-gray-200 lg:hidden">
+      <div className="border-t border-gray-200 dark:border-gray-800 lg:hidden">
         <RoutingPanel />
       </div>
 
