@@ -1,6 +1,7 @@
 export async function predictParts(imageBuffer: Buffer): Promise<unknown> {
+  const bytes = new Uint8Array(imageBuffer);
   const form = new FormData();
-  const blob = new Blob([imageBuffer], { type: "image/jpeg" });
+  const blob = new Blob([bytes], { type: "image/jpeg" });
   form.append("query_image", blob, "capture.jpg");
 
   const res = await fetch("https://api.brickognize.com/predict/parts/", {

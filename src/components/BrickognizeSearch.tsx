@@ -128,7 +128,13 @@ export function BrickognizeSearch({ open, onClose }: Props) {
       const parsed = raw as BrickognizeResponse;
 
       const items = Array.isArray(parsed?.items) ? parsed.items : [];
-      setResults(items.filter((i) => i.type === "part"));
+      const parts = items.filter((i) => i.type === "part");
+      setResults(parts);
+      if (parts.length === 0 && items.length > 0) {
+        setError("Brickognize found matches, but none were parts. Try a clearer photo.");
+      } else if (parts.length === 0) {
+        setError("No parts identified. Try better lighting and a plain background.");
+      }
       setActivePart(null);
       setCandidateSets([]);
       setSetsError("");

@@ -93,10 +93,16 @@ app.get("/api/parts/:partNum/sets", async (req, res) => {
 
 app.post(
   "/api/brickognize/predict-parts",
-  express.raw({ type: ["image/jpeg", "image/png", "application/octet-stream"], limit: "12mb" }),
+  express.json({ limit: "12mb" }),
   async (req, res) => {
     try {
-      const buffer = Buffer.from(req.body);
+      let buffer: Buffer;
+      if (typeof req.body?.image === "string") {
+        buffer = Buffer.from(req.body.image, "base64");
+      } else {
+        res.status(400).json({ error: "Missing image in request body" });
+        return;
+      }
       if (!buffer.length) {
         res.status(400).json({ error: "Empty image" });
         return;
